@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qlik-looker-okf"
+version = "3.0.0"
+description = "Enterprise-grade, OKF v0.2 native Qlik-to-Looker fleet migration engine with Stage 1.5 Explore Consolidation, 3-tier compatibility analysis, and zero-drift SQLite write-through indexing."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Gavin W"}
+]
+keywords = ["qlik", "looker", "lookml", "okf", "open-knowledge-format", "migration", "bi", "canonical-ir", "bigquery"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Telecommunications Industry",
+    "Topic :: Database",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.scripts]
+enterprise-qlik = "enterprise_qlik.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["enterprise_qlik*"]

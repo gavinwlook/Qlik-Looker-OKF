@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canonical Intermediate Representation (IR) Specification",
+  "description": "Open-standard, decoupled 2-Tier representation of BI semantic data models and visual layouts for enterprise migrations.",
+  "type": "object",
+  "required": [
+    "ir_version",
+    "contract_type",
+    "app_metadata",
+    "data_layer",
+    "visual_catalog"
+  ],
+  "properties": {
+    "ir_version": {
+      "type": "string",
+      "const": "2.0"
+    },
+    "contract_type": {
+      "type": "string",
+      "const": "OPEN_CANONICAL_IR"
+    },
+    "app_metadata": {
+      "type": "object",
+      "required": ["app_id", "app_name"],
+      "properties": {
+        "app_id": { "type": "string" },
+        "app_name": { "type": "string" },
+        "source_engine": { "type": "string" },
+        "sanitized": { "type": "boolean" },
+        "generated_at": { "type": "string" }
+      }
+    },
+    "data_layer": {
+      "type": "object",
+      "required": ["tables"],
+      "properties": {
+        "tables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "fields"],
+            "properties": {
+              "name": { "type": "string" },
+              "is_fact": { "type": "boolean" },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "data_type"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "data_type": { "type": "string" },
+                    "is_primary_key": { "type": "boolean" }
+                  }
+                }
+              },
+              "keys": { "type": "array" }
+            }
+          }
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from_table", "to_table", "join_type"],
+            "properties": {
+              "from_table": { "type": "string" },
+              "to_table": { "type": "string" },
+              "from_field": { "type": "string" },
+              "to_field": { "type": "string" },
+              "join_type": { "type": "string" },
+              "relationship": { "type": "string" }
+            }
+          }
+        },
+        "master_dimensions": { "type": "array" },
+        "master_measures": { "type": "array" },
+        "variables": { "type": "array" }
+      }
+    },
+    "visual_catalog": {
+      "type": "object",
+      "required": ["sheets"],
+      "properties": {
+        "sheets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["sheet_id", "title", "widgets"],
+            "properties": {
+              "sheet_id": { "type": "string" },
+              "title": { "type": "string" },
+              "grid_columns": { "type": "integer" },
+              "grid_rows": { "type": "integer" },
+              "widgets": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["widget_id", "title", "type", "layout"],
+                  "properties": {
+                    "widget_id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "type": { "type": "string" },
+                    "layout": {
+                      "type": "object",
+                      "required": ["col", "row", "width", "height"],
+                      "properties": {
+                        "col": { "type": "number" },
+                        "row": { "type": "number" },
+                        "width": { "type": "number" },
+                        "height": { "type": "number" },
+                        "looker_col": { "type": "integer" },
+                        "looker_row": { "type": "integer" },
+                        "looker_width": { "type": "integer" },
+                        "looker_height": { "type": "integer" }
+                      }
+                    },
+                    "dimensions": { "type": "array" },
+                    "measures": { "type": "array" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "feature_compatibility": {
+      "type": "object",
+      "properties": {
+        "findings": { "type": "array" },
+        "summary": { "type": "object" }
+      }
+    }
+  }
+}

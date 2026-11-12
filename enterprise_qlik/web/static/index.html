@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Qlik-to-Looker Migration Platform</title>
+  <link rel="stylesheet" href="style.css?v=2.4">
+</head>
+<body>
+
+  <!-- Top Application Header -->
+  <header>
+    <div class="brand">
+      <div class="logo-badge">OKF v0.2</div>
+      <div>
+        <h1>Qlik-to-Looker OKF Migration Engine</h1>
+        <p>3-Stage Fleet Semantic Consolidation, Open Knowledge Format (OKF) & LookML Compiler</p>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <!-- Active Qlik Instance Pill -->
+      <div class="active-instance-pill" id="header-instance-pill" onclick="switchTab('tab-instances')" title="Click to manage connected Qlik instances">
+        <div class="indicator-dot disconnected" id="header-conn-dot"></div>
+        <div>
+          <div class="indicator-title" id="header-instance-name">Connecting to Qlik...</div>
+          <div class="indicator-subtext" id="header-instance-type">Checking active profile...</div>
+        </div>
+      </div>
+
+      <!-- Decoupled Stage Progress Flow -->
+      <div class="stages-flow">
+        <div class="stage-step active" id="stage1-badge">
+          <span style="color: var(--primary);">●</span> STAGE 1: QLIK EXTRACTION
+        </div>
+        <div class="stage-arrow">➔</div>
+        <div class="stage-step" id="stage15-badge">
+          <span style="color: #7E22CE;">●</span> STAGE 1.5: OKF CONSOLIDATION
+        </div>
+        <div class="stage-arrow">➔</div>
+        <div class="stage-step" id="stage2-badge">
+          <span style="color: var(--text-muted);">○</span> STAGE 2: CANONICAL LOOKML
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="tabs-nav">
+    <button class="tab-btn active" data-tab="tab-instances">🏢 Qlik Instances</button>
+    <button class="tab-btn" data-tab="tab-executive">📊 Executive Command Center</button>
+    <button class="tab-btn" data-tab="tab-waves">🌊 Migration Wave Planner</button>
+    <button class="tab-btn" data-tab="tab-catalog">📂 Fleet Hierarchy & Catalog</button>
+    <button class="tab-btn" data-tab="tab-canvas">🔬 Stage 1: App Inspection Studio</button>
+    <button class="tab-btn" data-tab="tab-okf">🧠 Stage 1.5: OKF Semantic Catalog</button>
+    <button class="tab-btn" data-tab="tab-lookml">🚀 Stage 2: Explore-First LookML Studio</button>
+  </nav>
+
+  <!-- Main Work Area (Generous Padding & Breathing Room) -->
+  <main>
+
+    <!-- TAB 0: Qlik Instances & Connections -->
+    <div class="tab-pane active" id="tab-instances">
+      <!-- Active Instance Hero Card -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <div class="card-title">
+            <span>Active Qlik Connection</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary" id="btn-test-active-instance" onclick="testActiveInstance()">⚡ Test Live Connection</button>
+            <button class="btn-primary" id="btn-discover-active-apps" onclick="discoverActiveApps()">🔍 Discover Fleet Apps</button>
+            <button class="btn-primary" id="btn-inst-register-app" onclick="openRegisterAppModal()" style="background: #10B981; border-color: #10B981; color: white;">+ Register Qlik App</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px;">
+          <div class="stat-card">
+            <span class="stat-label">Active Instance</span>
+            <span class="stat-value" id="hero-instance-name" style="font-size: 17px;">Loading instance...</span>
+            <span style="font-size: 12px; color: var(--text-muted); word-break: break-all;" id="hero-instance-host">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Environment Type</span>
+            <span class="stat-value" id="hero-instance-type" style="font-size: 17px; color: var(--primary);">—</span>
+            <span style="font-size: 12px; color: var(--text-muted);" id="hero-instance-auth">—</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Connection Status</span>
+            <span class="stat-value" id="hero-instance-status" style="font-size: 17px; color: var(--text-muted);">○ INITIALIZING</span>
+            <span style="font-size: 12px; color: var(--text-muted);" id="hero-instance-tested">Checking connection status...</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Imported Apps</span>
+            <span class="stat-value" id="hero-instance-apps">—</span>
+            <span style="font-size: 12px; color: var(--text-muted);"><a href="#tab-catalog" onclick="switchTab('tab-catalog')" style="color: var(--primary); text-decoration: none; font-weight: 500;">View in Portfolio Catalog →</a></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configured Instances Grid -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+          <div class="card-title">
+            <span>Configured Enterprise Instances & Clusters</span>
+          </div>
+          <button class="btn-secondary" id="btn-new-instance-trigger" onclick="scrollToInstanceForm()">＋ Add New Qlik Instance</button>
+        </div>
+        <p class="card-subtitle">Select which Qlik instance to connect to. You can freely switch between multi-tenant Qlik Cloud SaaS environments and on-premises Qlik Sense Enterprise on Windows (QSEoW) clusters.</p>
+        
+        <div class="instance-grid" id="instance-cards-container">
+          <!-- Populated dynamically by app.js -->
+        </div>
+      </div>
+
+      <!-- Instance Add/Edit Configuration Card -->
+      <div class="card" id="instance-form-card">
+        <div class="card-header">
+          <div class="card-title" id="form-card-title">Add or Configure Qlik Instance</div>
+          <div class="env-toggle-group">
+            <button type="button" class="env-toggle-btn active" id="btn-toggle-cloud" onclick="selectEnvironmentType('cloud')">
+              ☁️ Qlik Cloud (SaaS)
+            </button>
+            <button type="button" class="env-toggle-btn" id="btn-toggle-onprem" onclick="selectEnvironmentType('on_prem')">
+              🖥️ Qlik Sense On-Premises (QSEoW)
+            </button>
+          </div>
+        </div>
+        <p class="card-subtitle" id="form-card-subtitle">Configure connection credentials for Qlik Cloud SaaS via Bearer API keys.</p>
+
+        <form id="instance-config-form" onsubmit="event.preventDefault(); saveInstance();">
+          <input type="hidden" id="form-tenant-id" value="">
+          <input type="hidden" id="form-env-type" value="cloud">
+
+          <!-- Common Instance Name -->
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Instance Label / Friendly Name</label>
+            <input type="text" id="form-instance-name" placeholder="e.g. EMEA Production Retail SaaS" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+          </div>
+
+          <!-- Qlik Cloud Fields -->
+          <div id="fields-cloud">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Tenant URL</label>
+                <input type="text" id="form-cloud-url" placeholder="https://your-tenant.eu.qlikcloud.com" value="" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Tenant region hostname (e.g. *.eu.qlikcloud.com or *.us.qlikcloud.com)</div>
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">API Key (Bearer Token)</label>
+                <input type="password" id="form-cloud-key" placeholder="Bearer Token" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Generate in Qlik Cloud Management Console &gt; Settings &gt; API Keys</div>
+              </div>
+            </div>
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Web Integration ID (Optional)</label>
+              <input type="text" id="form-cloud-web-id" placeholder="Optional Qlik Cloud Web Integration ID" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+            </div>
+          </div>
+
+          <!-- Qlik On-Premises Fields -->
+          <div id="fields-onprem" style="display: none;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">QSEoW Host Name / IP</label>
+                <input type="text" id="form-onprem-host" placeholder="qlik-server.corp.internal" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">QRS REST Port</label>
+                <input type="number" id="form-onprem-qrs-port" value="4242" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">QIX Engine Port</label>
+                <input type="number" id="form-onprem-engine-port" value="4747" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Client Certificate (client.pem)</label>
+                <input type="text" id="form-onprem-cert" placeholder="/etc/qlik/client.pem" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Client Key (client_key.pem)</label>
+                <input type="text" id="form-onprem-key" placeholder="/etc/qlik/client_key.pem" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Root CA (root.pem, Optional)</label>
+                <input type="text" id="form-onprem-ca" placeholder="/etc/qlik/root.pem" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; align-items: center;">
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">User Directory</label>
+                <input type="text" id="form-onprem-userdir" value="INTERNAL" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">User ID</label>
+                <input type="text" id="form-onprem-userid" value="sa_api" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+              <div style="padding-top: 18px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer;">
+                  <input type="checkbox" id="form-onprem-verify-ssl">
+                  <span>Verify SSL CA Certificates</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connection Test Feedback Panel -->
+          <div id="test-result-panel" style="display: none;"></div>
+
+          <!-- Actions Bar -->
+          <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 16px; margin-top: 16px;">
+            <button type="button" class="btn-secondary" id="btn-test-form-conn" onclick="testFormConnection()">⚡ Test Connection</button>
+            <button type="button" class="btn-secondary" onclick="resetInstanceForm()">Cancel</button>
+            <button type="submit" class="btn-primary" id="btn-save-instance">💾 Save Instance Profile</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- TAB 1: Executive Command Center -->
+    <div class="tab-pane" id="tab-executive">
+      <!-- Executive Portfolio Scorecards -->
+      <div class="exec-metric-grid">
+        <div class="stat-card">
+          <span class="stat-label">TOTAL FLEET INVENTORY</span>
+          <span class="stat-value" id="exec-stat-total">0 Apps</span>
+          <span style="font-size: 12px; color: var(--text-muted);" id="exec-stat-sub-assets">0 Sheets · 0 Visual Elements</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">PORTFOLIO READINESS</span>
+          <span class="stat-value" id="exec-stat-readiness" style="color: var(--primary);">0%</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="exec-readiness-fill" style="width: 0%;"></div>
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="exec-stat-sub-readiness">IR Compiled & Ready for LookML</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">ACTIVE WAVE ALLOCATION</span>
+          <span class="stat-value" id="exec-stat-waves" style="color: var(--accent-success);">0 in Wave 1</span>
+          <span style="font-size: 12px; color: var(--text-muted);" id="exec-stat-sub-waves">0 Wave 2 · 0 Wave 3 · 0 Sunsetting</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">SEMANTIC CONSOLIDATION SAVINGS</span>
+          <span class="stat-value" id="exec-stat-savings" style="color: #6366F1;">0 Models Consolidated</span>
+          <span style="font-size: 12px; color: var(--text-muted);" id="exec-stat-sub-savings">0 hrs developer time saved</span>
+        </div>
+      </div>
+
+      <!-- Quick Executive Action Bar -->
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; padding: 14px 20px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 10px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 22px;">🧭</span>
+          <div>
+            <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">Head of BI Strategic Migration Roadmap</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Decouple QIX proprietary expressions into reusable Looker Explores and eliminate redundant reporting silos.</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn-secondary" id="btn-export-exec-json" onclick="exportExecutiveSummaryJSON()">📥 Export Executive Summary (.json)</button>
+          <button class="btn-primary" id="btn-goto-waves" onclick="switchTab('tab-waves')">🌊 Open Migration Wave Planner →</button>
+          <button class="btn-secondary" id="btn-goto-catalog" onclick="switchTab('tab-catalog')">📂 View Complete App Catalog →</button>
+        </div>
+      </div>
+
+      <!-- Two-Column Governance & Semantic Architecture Breakdown -->
+      <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; margin-bottom: 24px;">
+        
+        <!-- Left: Governance Space Matrix -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>Enterprise Space & Stream Governance Risk</span>
+            </div>
+            <span class="badge" style="background: var(--bg-subtle); color: var(--primary);">Access Boundaries</span>
+          </div>
+          <p class="card-subtitle">Qlik container distribution showing production-governed vs developer sandbox assets.</p>
+
+          <div id="exec-space-breakdown-container" style="display: flex; flex-direction: column; gap: 14px; margin-top: 16px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Right: Semantic Model Clustering & Deduplication -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>Semantic Model Deduplication Hub</span>
+            </div>
+            <span class="badge" style="background: #ECFDF5; color: var(--accent-success); border: 1px solid #A7F3D0;">Consolidation Opportunity</span>
+          </div>
+          <p class="card-subtitle">Automated clustering groups Qlik applications that query identical data warehouse tables to recommend shared Looker Explores.</p>
+
+          <div id="exec-clusters-container" style="display: flex; flex-direction: column; gap: 14px; margin-top: 16px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 2: Migration Wave & Sprint Planner -->
+    <div class="tab-pane" id="tab-waves">
+      <!-- Wave Controls & Filter Header -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Migration Wave & Sprint Planning Kanban</div>
+            <div class="card-subtitle">Prioritize applications into phased migration waves. Assign engineering leads and transition apps through lifecycle stages.</div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button class="btn-secondary" id="btn-manage-leads" onclick="openManageLeadsModal()">👥 Migration Leads Roster</button>
+            <button class="btn-primary" id="btn-open-policy-wizard" onclick="openPolicyWizardModal()" style="background: linear-gradient(135deg, #4F46E5, #6366F1); color: white; border: none; font-weight: 600;">⚡ Wave Policy Wizard</button>
+            <div class="dropdown" style="position: relative; display: inline-block;">
+              <button class="btn-secondary" id="btn-export-portfolio-menu" onclick="toggleExportMenu(event)">📥 Export Portfolio ▾</button>
+              <div id="export-dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); z-index: 100; min-width: 175px; overflow: hidden;">
+                <button type="button" onclick="exportPortfolioCSV()" style="width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; cursor: pointer; color: var(--text-primary); font-size: 13px; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.background='var(--bg-subtle)'" onmouseout="this.style.background='none'">
+                  <span>📊</span> <span>Export as CSV</span>
+                </button>
+                <button type="button" onclick="exportPortfolioJSON()" style="width: 100%; text-align: left; padding: 10px 14px; background: none; border: none; cursor: pointer; color: var(--text-primary); font-size: 13px; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-subtle);" onmouseover="this.style.background='var(--bg-subtle)'" onmouseout="this.style.background='none'">
+                  <span>⚙️</span> <span>Export as JSON</span>
+                </button>
+              </div>
+            </div>
+            <button class="btn-secondary" id="btn-refresh-waves" onclick="loadWavesData()">🔄 Refresh Waves</button>
+          </div>
+        </div>
+
+        <!-- Filters Strip -->
+        <div style="display: flex; gap: 12px; align-items: center; margin-top: 12px; flex-wrap: wrap;">
+          <input type="text" id="wave-filter-search" placeholder="🔍 Search apps in waves..." oninput="filterWaveCards()" style="padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; min-width: 220px; background: var(--bg-card); color: var(--text-primary);">
+          
+          <select id="wave-filter-lead" onchange="filterWaveCards()" style="padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+            <option value="all">All Migration Leads</option>
+            <!-- Populated dynamically from genuine roster -->
+          </select>
+
+          <select id="wave-filter-space" onchange="filterWaveCards()" style="padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+            <option value="all">All Space Types</option>
+            <option value="managed">Managed Spaces (Production)</option>
+            <option value="shared">Shared Spaces (Co-Dev)</option>
+            <option value="personal">Personal Spaces (Sandbox)</option>
+            <option value="stream">Published Streams</option>
+          </select>
+
+          <span id="wave-filter-count" style="font-size: 12px; color: var(--text-muted); margin-left: auto;">Showing all applications</span>
+        </div>
+      </div>
+
+      <!-- 5-Column Kanban Board -->
+      <div class="kanban-board" id="kanban-board">
+        <!-- Col 1: Unassigned -->
+        <div class="kanban-col" id="col-unassigned">
+          <div class="kanban-col-header wave-unassigned">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; font-size: 14px; color: #475569;">Backlog</span>
+              <span class="badge" id="count-unassigned" style="background: #E2E8F0; color: #475569;">0</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Awaiting triage & wave assignment</div>
+          </div>
+          <div class="kanban-cards-container" id="cards-unassigned"></div>
+        </div>
+
+        <!-- Col 2: Wave 1 -->
+        <div class="kanban-col" id="col-wave1">
+          <div class="kanban-col-header wave-wave1">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; font-size: 14px; color: #065F46;">Wave 1: Quick Wins</span>
+              <span class="badge" id="count-wave1" style="background: #D1FAE5; color: #065F46;">0</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">High ROI · Clean star schema · Sprint 1</div>
+          </div>
+          <div class="kanban-cards-container" id="cards-wave1"></div>
+        </div>
+
+        <!-- Col 3: Wave 2 -->
+        <div class="kanban-col" id="col-wave2">
+          <div class="kanban-col-header wave-wave2">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; font-size: 14px; color: #3730A3;">Wave 2: Core Governed</span>
+              <span class="badge" id="count-wave2" style="background: #EEF2FF; color: #3730A3;">0</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Managed spaces · Standard reporting · Sprint 2-3</div>
+          </div>
+          <div class="kanban-cards-container" id="cards-wave2"></div>
+        </div>
+
+        <!-- Col 4: Wave 3 -->
+        <div class="kanban-col" id="col-wave3">
+          <div class="kanban-col-header wave-wave3">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; font-size: 14px; color: #92400E;">Wave 3: Complex Multi-Fact</span>
+              <span class="badge" id="count-wave3" style="background: #FEF3C7; color: #92400E;">0</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Synthetic keys · Loops · AGGR expressions</div>
+          </div>
+          <div class="kanban-cards-container" id="cards-wave3"></div>
+        </div>
+
+        <!-- Col 5: Decommissioned -->
+        <div class="kanban-col" id="col-decommissioned">
+          <div class="kanban-col-header wave-decommissioned">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; font-size: 14px; color: #991B1B;">Decommissioned</span>
+              <span class="badge" id="count-decommissioned" style="background: #FEE2E2; color: #991B1B;">0</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Sunsetting · Sandboxes · Obsolete</div>
+          </div>
+          <div class="kanban-cards-container" id="cards-decommissioned"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Portfolio Catalog & Fleet Hierarchy -->
+    <div class="tab-pane" id="tab-catalog">
+
+      <!-- Executive Fleet Migration Status Bar -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="stat-card">
+          <span class="stat-label">TOTAL FLEET INVENTORY</span>
+          <span class="stat-value" id="fleet-stat-total">0</span>
+          <span style="font-size: 12px; color: var(--text-muted);">Discovered applications</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">STAGE 1: IR COMPILED</span>
+          <span class="stat-value" id="fleet-stat-compiled" style="color: var(--primary);">0</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="fleet-progress-fill" style="width: 0%;"></div>
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="fleet-stat-pct">0% Stage 1 Complete</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">STAGE 2: LOOKML READY</span>
+          <span class="stat-value" id="fleet-stat-lookml" style="color: var(--accent-success);">0</span>
+          <span style="font-size: 12px; color: var(--text-muted);">Ready for Looker deploy</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">TOTAL MIGRATION ASSETS</span>
+          <span class="stat-value" id="fleet-stat-assets" style="font-size: 18px;">0 Sheets · 0 Tiles</span>
+          <span style="font-size: 12px; color: var(--text-muted);">Decomposed visual elements</span>
+        </div>
+      </div>
+
+      <!-- Fleet Explorer Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>Enterprise Hierarchy & Fleet Status Explorer</span>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <!-- View Mode Toggle -->
+            <div class="env-toggle-group">
+              <button type="button" class="env-toggle-btn active" id="btn-view-tree" onclick="setCatalogViewMode('tree')">
+                🌳 Hierarchy Tree
+              </button>
+              <button type="button" class="env-toggle-btn" id="btn-view-table" onclick="setCatalogViewMode('table')">
+                📋 Fleet Table
+              </button>
+            </div>
+            <button class="btn-secondary" onclick="switchTab('tab-instances')">🏢 Switch Instance</button>
+            <button class="btn-secondary" id="btn-refresh-catalog" onclick="refreshFleetCatalog()">🔄 Refresh Fleet</button>
+            <button class="btn-secondary" id="btn-export-csv-catalog" onclick="exportPortfolioCSV()" title="Download portfolio content details, waves, and lead owners as CSV">📥 Export CSV</button>
+            <button class="btn-secondary" id="btn-open-roster" onclick="openManageLeadsModal()">👥 Leads Roster</button>
+            <button class="btn-primary" id="btn-open-register-app" onclick="openRegisterAppModal()" style="background: #10B981; border-color: #10B981; color: white;">+ Register Qlik App</button>
+          </div>
+        </div>
+        
+        <!-- Active Instance Context Banner -->
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 12px 18px; background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 13px;">
+          <span>Active Qlik Environment:</span>
+          <strong id="catalog-target-instance" style="color: var(--text-primary);">Loading...</strong>
+          <span class="badge" id="catalog-target-badge" style="background: var(--bg-subtle); color: var(--text-muted); font-size: 10px;">—</span>
+          <span id="catalog-target-status" style="margin-left: auto; font-size: 12px; color: var(--text-muted); font-weight: 600;">○ Initializing</span>
+        </div>
+
+        <!-- View Mode A: Hierarchical Tree Explorer (Default) -->
+        <div id="catalog-tree-view" class="fleet-split">
+          <!-- Left Column: Expandable Tree -->
+          <div>
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+              Qlik Container Hierarchy (Server → Space/Stream → App)
+            </div>
+            <div class="tree-view" id="fleet-tree-root">
+              <div style="color: var(--text-muted); padding: 16px; text-align: center;">Loading fleet hierarchy tree...</div>
+            </div>
+          </div>
+
+          <!-- Right Column: Selected Context Inspector -->
+          <div>
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+              Context & Selection Details
+            </div>
+            <div class="card" id="tree-inspector-panel" style="border: 1px solid var(--border-subtle); box-shadow: none; min-height: 380px;">
+              <div style="color: var(--text-muted); padding: 32px 16px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+                <div style="font-weight: 600; color: var(--text-primary); font-size: 14px;">Select an Application or Container</div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Click any node in the hierarchy tree to view its container context and begin migration.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- View Mode B: Flat Fleet Table -->
+        <div id="catalog-table-view" style="display: none;">
+          <div class="table-container">
+            <table class="data-table" id="apps-table">
+              <thead>
+                <tr>
+                  <th style="width: 38px; text-align: center;"><input type="checkbox" id="catalog-select-all" onchange="toggleSelectAllApps(this.checked)"></th>
+                  <th>App Name</th>
+                  <th>App ID</th>
+                  <th>Stream / Space</th>
+                  <th>Container Type</th>
+                  <th>Migration Wave</th>
+                  <th>Lead</th>
+                  <th>Sheets</th>
+                  <th>Widgets</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Populated via API -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Floating Batch Actions Bar -->
+      <div class="batch-actions-bar" id="batch-actions-bar">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="batch-count-badge" id="batch-selected-count">0</span>
+          <span style="font-size: 13px; font-weight: 600;">Selected</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <button class="btn-primary" id="btn-batch-extract" onclick="batchExtractSelectedApps()" style="background: #4F46E5; font-size: 12px; padding: 6px 14px;">⚡ Batch Extract IR</button>
+          <button class="btn-secondary" id="btn-batch-wave1" onclick="batchAssignWave('wave1')" style="background: rgba(255,255,255,0.15); color: #FFF; border-color: rgba(255,255,255,0.3); font-size: 12px; padding: 6px 12px;">🌊 Move to Wave 1</button>
+          <button class="btn-secondary" id="btn-batch-wave2" onclick="batchAssignWave('wave2')" style="background: rgba(255,255,255,0.15); color: #FFF; border-color: rgba(255,255,255,0.3); font-size: 12px; padding: 6px 12px;">🌊 Move to Wave 2</button>
+          <button class="btn-secondary" id="btn-batch-wave3" onclick="batchAssignWave('wave3')" style="background: rgba(255,255,255,0.15); color: #FFF; border-color: rgba(255,255,255,0.3); font-size: 12px; padding: 6px 12px;">🌊 Move to Wave 3</button>
+          <button class="btn-secondary" id="btn-batch-decom" onclick="batchDecommissionSelected(true)" style="background: rgba(239,68,68,0.3); color: #FCA5A5; border-color: rgba(239,68,68,0.5); font-size: 12px; padding: 6px 12px;">🗑 Decommission</button>
+          <select id="batch-assign-lead-select" onchange="batchAssignLeadFromDropdown(this.value)" style="background: rgba(255,255,255,0.18); color: #FFF; border: 1px solid rgba(255,255,255,0.35); border-radius: 6px; font-size: 12px; padding: 6px 10px; outline: none; cursor: pointer;">
+            <option value="" style="color: #1F2937; background: #FFF;">👤 Assign Lead...</option>
+          </select>
+          <button class="btn-secondary" id="btn-batch-deselect" onclick="deselectAllApps()" style="background: transparent; color: #E0E7FF; border: none; font-size: 12px; padding: 6px 8px; cursor: pointer;">✕ Deselect All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Stage 1 Unified App Inspection Studio -->
+    <div class="tab-pane" id="tab-canvas">
+      
+      <!-- Top Inspected App Context Strip -->
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding: 14px 20px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 10px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span style="font-size: 26px;">📊</span>
+          <div>
+            <div style="font-size: 11px; font-weight: 600; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px;">
+              Inspected Qlik Application
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h2 style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 0;" id="studio-app-name">None</h2>
+              <span class="badge" id="studio-app-id" style="font-family: var(--font-mono); font-size: 11px; background: var(--bg-subtle);">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+          <span class="badge" id="studio-instance-badge" style="background: var(--bg-subtle); color: var(--text-muted); font-size: 11px;">No Qlik Connected</span>
+          <span class="badge" id="studio-ir-status" style="background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-subtle); font-size: 11px;">No App Selected</span>
+          <button class="btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="reExtractCurrentApp()">🔄 Re-Extract App</button>
+        </div>
+      </div>
+
+      <!-- Main Workspace: Left Sidebar + Right Display Area -->
+      <div class="canvas-split">
+        <!-- Left Column: Architecture & Sheet Navigation -->
+        <div class="sheet-nav-panel">
+          
+          <!-- Section 1: Shared Application Architecture -->
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+            Shared Architecture
+          </div>
+          
+          <div class="sheet-item" id="nav-item-datamodel" onclick="switchStudioView('datamodel')">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span class="sheet-item-title" style="display: flex; align-items: center; gap: 6px;">
+                <span>🗄️</span> <span>Shared Data Model</span>
+              </span>
+              <span class="badge" id="nav-tables-count" style="font-size: 10px; background: var(--bg-subtle);">0 Tables</span>
+            </div>
+            <div class="sheet-item-meta">
+              <span id="nav-joins-count">0 Relationships</span>
+            </div>
+          </div>
+
+          <div class="sheet-item" id="nav-item-audit" onclick="switchStudioView('audit')">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span class="sheet-item-title" style="display: flex; align-items: center; gap: 6px;">
+                <span>🔍</span> <span>Compatibility Audit</span>
+              </span>
+              <span class="badge" id="nav-findings-count" style="font-size: 10px; background: var(--bg-subtle);">0 Rules</span>
+            </div>
+            <div class="sheet-item-meta">
+              <span>3-Tier Migration Gap Findings</span>
+            </div>
+          </div>
+
+          <!-- Section 2: Dashboards & Sheets -->
+          <div class="sheet-nav-header" style="margin-top: 12px;">
+            <span style="font-weight: 700; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+              Dashboards & Sheets
+            </span>
+            <span class="badge" id="sheet-count-badge" style="background: var(--bg-subtle); color: var(--primary); font-size: 11px;">0 Sheets</span>
+          </div>
+
+          <input type="text" class="sheet-search-input" id="sheet-search-input" placeholder="🔍 Search sheets..." oninput="filterSheetList(this.value)">
+
+          <div class="sheet-list" id="sheet-list-container">
+            <!-- Populated dynamically with sheets -->
+          </div>
+        </div>
+
+        <!-- Right Column: Active Content View -->
+        <div>
+          <!-- VIEW A: Visual Dashboard Sheet (Default) -->
+          <div id="view-sheet-container">
+            <!-- Active Sheet Header Strip -->
+            <div class="active-sheet-banner" id="active-sheet-banner">
+              <div>
+                <div style="font-size: 11px; font-weight: 600; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">
+                  Active LookML Target Dashboard
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <h3 style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0;" id="active-sheet-title">Select an Application</h3>
+                  <span class="badge" id="active-sheet-id-badge" style="font-family: var(--font-mono); font-size: 11px; background: var(--bg-subtle);">—</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;" id="active-sheet-target-file">
+                  Select an application from the Fleet Catalog to inspect its data model and sheets.
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;" id="active-sheet-cat-summary">
+                <!-- Mini summary pills for Cat 1/2/3 on this sheet -->
+              </div>
+            </div>
+
+            <!-- 12-Column Normalized CSS Grid -->
+            <div class="canvas-grid" id="canvas-grid">
+              <div style="grid-column: 1 / -1; padding: 60px 20px; text-align: center; color: var(--text-muted);">
+                <div style="font-size: 36px; margin-bottom: 12px;">📊</div>
+                <div style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">No Application Selected</div>
+                <div style="font-size: 13px; max-width: 480px; margin: 0 auto 16px auto;">Select an application from the Fleet Catalog or connect a Qlik instance to inspect its data model and dashboards.</div>
+                <button class="btn-primary" onclick="switchTab('tab-catalog')">Go to Fleet Catalog →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW B: Shared Data Model & Relationships -->
+          <div id="view-datamodel-container" style="display: none;">
+            <div class="card" style="margin-bottom: 16px; border: 1px solid var(--border-subtle); box-shadow: none;">
+              <div class="card-header">
+                <div class="card-title">Shared Application Data Layer (Star / Snowflake Schema)</div>
+                <span class="badge" style="background: #EEF2FF; color: var(--primary);">Qlik Associative Data Model</span>
+              </div>
+              
+              <!-- Data Layer KPI Counters -->
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+                <div class="stat-card" style="padding: 12px 16px;">
+                  <div class="stat-label">TABLES EXTRACTED</div>
+                  <div class="stat-value" id="dm-stat-tables" style="font-size: 20px;">0</div>
+                </div>
+                <div class="stat-card" style="padding: 12px 16px;">
+                  <div class="stat-label">INFERRED RELATIONSHIPS</div>
+                  <div class="stat-value" id="dm-stat-joins" style="font-size: 20px; color: var(--primary);">0</div>
+                </div>
+                <div class="stat-card" style="padding: 12px 16px;">
+                  <div class="stat-label">TOTAL SCHEMA FIELDS</div>
+                  <div class="stat-value" id="dm-stat-fields" style="font-size: 20px;">0</div>
+                </div>
+                <div class="stat-card" style="padding: 12px 16px;">
+                  <div class="stat-label">PII REDACTED</div>
+                  <div class="stat-value" id="dm-stat-pii" style="font-size: 20px; color: var(--accent-success);">0 Fields</div>
+                </div>
+              </div>
+
+              <!-- Tables Grid -->
+              <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">
+                Extracted Tables & Columns:
+              </div>
+              <div id="datamodel-tables-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <!-- Table cards rendered here -->
+              </div>
+
+              <!-- Inferred Joins -->
+              <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">
+                Inferred Looker Join Relationships (Primary/Foreign Keys):
+              </div>
+              <div id="datamodel-joins-list" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Join relationships rendered here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW C: 3-Tier Compatibility Audit -->
+          <div id="view-audit-container" style="display: none;">
+            <div class="card" style="border: 1px solid var(--border-subtle); box-shadow: none;">
+              <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+                <div>
+                  <div class="card-title">3-Tier Migration Gap & Remediation Studio</div>
+                  <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Taxonomy audit of Qlik visual formulas, set analysis, data scripts, and dashboard features
+                  </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;" id="audit-filter-bar">
+                  <button class="btn-secondary active" data-cat="all">All Findings</button>
+                  <button class="btn-secondary" data-cat="1">Cat 1 (Mapped)</button>
+                  <button class="btn-secondary" data-cat="2">Cat 2 (Upstream Refactor)</button>
+                  <button class="btn-secondary" data-cat="3">Cat 3 (Deprecated / Loops)</button>
+                  <div style="height: 20px; width: 1px; background: var(--border-subtle); margin: 0 4px;"></div>
+                  <button class="btn-secondary active" id="btn-group-by-sheet" onclick="toggleGroupBySheet()" title="Group issues by sheet or component">
+                    🗂️ Group by Sheet
+                  </button>
+                  <select id="audit-sheet-filter" onchange="filterFindingsBySheet(this.value)" class="form-control" style="font-size: 12px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-subtle); background: var(--bg-surface); color: var(--text-primary); cursor: pointer; max-width: 250px;">
+                    <option value="all">📂 All Sheets & Scopes</option>
+                  </select>
+                </div>
+              </div>
+              <div class="table-container">
+                <table class="data-table" id="findings-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 100px;">Tier</th>
+                      <th style="width: 85px;">Severity</th>
+                      <th style="width: 200px;">Sheet / Dashboard Location</th>
+                      <th style="width: 150px;">Issue Type</th>
+                      <th>Title & Description</th>
+                      <th>Looker / dbt Remediation Plan</th>
+                      <th style="width: 85px;">Est. Hours</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Findings rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Stage 1 Milestone Handoff Card at Footer -->
+      <div class="card" style="margin-top: 24px; border: 1px solid #C7D2FE; background: linear-gradient(180deg, #FFFFFF 0%, #F5F7FF 100%);">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h3 style="font-size: 16px; font-weight: 700; color: #1E1B4B; margin: 0;">
+                Autonomous OKF v0.2 & Canonical IR Handoff Milestone
+              </h3>
+              <span class="badge" style="background: #F3E8FF; color: #7E22CE; font-size: 10px; border: 1px solid #D8B4FE;">OKF v0.2 Zero-Drift</span>
+            </div>
+            <p style="font-size: 12px; color: #4338CA; margin: 4px 0 0 0;">
+              Application extracted and written through to the fleet OKF Knowledge Base (`okf_catalog/`). Proceed to Stage 1.5 to reconcile into Canonical Explores.
+            </p>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button class="btn-secondary" onclick="copyCanonicalIRJSON()">📋 Copy IR</button>
+            <button class="btn-secondary" id="btn-download-ir">📥 Download App IR (.json)</button>
+            <button class="btn-primary" onclick="window.location.href='/api/okf/export.zip'" style="background: #7E22CE; border-color: #7E22CE;">📦 Export OKF Catalog (.zip)</button>
+            <button class="btn-primary" onclick="switchTab('tab-okf')" style="background: var(--primary); font-weight: 600;">🧠 Stage 1.5: OKF Explore Consolidation →</button>
+            <button class="btn-success" onclick="switchTab('tab-lookml')" style="font-weight: 600;">Stage 2 LookML →</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+          <div class="stat-card" style="padding: 12px 16px; background: #FFFFFF;">
+            <div class="stat-label">SELECTED APP ID</div>
+            <div id="ir-card-app-id" style="font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 2px;">—</div>
+          </div>
+          <div class="stat-card" style="padding: 12px 16px; background: #FFFFFF;">
+            <div class="stat-label">DATA LAYER ARCHITECTURE</div>
+            <div id="ir-card-tables-count" style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 2px;">0 Tables · 0 Relationships</div>
+          </div>
+          <div class="stat-card" style="padding: 12px 16px; background: #FFFFFF;">
+            <div class="stat-label">VISUAL CATALOG</div>
+            <div id="ir-card-sheets-count" style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 2px;">0 Sheets · 0 Widgets</div>
+          </div>
+          <div class="stat-card" style="padding: 12px 16px; background: #FFFFFF;">
+            <div class="stat-label">OKF v0.2 & PII SCRUBBING</div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--accent-success); margin-top: 2px;">✓ Write-Through Synced</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 4.5: Stage 1.5 OKF Semantic Catalog & Explore Consolidation Studio -->
+    <div class="tab-pane" id="tab-okf">
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="card-title">Stage 1.5: Fleet OKF v0.2 Semantic Knowledge Catalog & Explore Consolidation</span>
+              <span class="badge" id="okf-conformance-badge" style="background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; font-weight: 700;">✔ OKF v0.2 VALID</span>
+            </div>
+            <p class="card-subtitle" style="margin-top: 4px;">
+              Deduplicates tables and measures across 500+ Qlik apps into a minimal set of Canonical Looker Explores (`explores/*.md`). Disk `.md` files are the canonical source of truth with sub-2ms `os.scandir()` SQLite write-through indexing.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn-secondary" onclick="loadOKFCatalog()">🔄 Sync Disk (.md) ↔ SQLite</button>
+            <button class="btn-primary" id="btn-run-okf-reconcile" onclick="runStage15FleetReconciliation()" style="background: #7E22CE; border-color: #7E22CE;">⚡ Reconcile Fleet into Canonical Explores</button>
+            <button class="btn-success" onclick="compileEntireOKFFleetToLookML()">🚀 Compile Entire OKF Fleet to LookML</button>
+            <button class="btn-secondary" onclick="window.location.href='/api/okf/export.zip'">📦 Download OKF Bundle (.zip)</button>
+          </div>
+        </div>
+
+        <!-- OKF KPI Strip -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-top: 16px;">
+          <div class="stat-card">
+            <span class="stat-label">CANONICAL LOOKER EXPLORES</span>
+            <span class="stat-value" id="okf-stat-explores" style="color: #7E22CE;">0</span>
+            <span style="font-size: 11px; color: var(--text-muted);" id="okf-stat-explores-sub">explores/*.md synthesized</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">DEDUPLICATED TABLES / VIEWS</span>
+            <span class="stat-value" id="okf-stat-tables" style="color: var(--primary);">0</span>
+            <span style="font-size: 11px; color: var(--text-muted);">tables/*.md shared across fleet</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">SHARED BUSINESS METRICS</span>
+            <span class="stat-value" id="okf-stat-metrics" style="color: #0284C7;">0</span>
+            <span style="font-size: 11px; color: var(--text-muted);">metrics/*.md master measures</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">QLIK APP CATALOGS</span>
+            <span class="stat-value" id="okf-stat-apps" style="color: #059669;">0</span>
+            <span style="font-size: 11px; color: var(--text-muted);">apps/*.md visual & audit specs</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">CAT-2 EFFORT DEDUPLICATION</span>
+            <span class="stat-value" id="okf-stat-savings" style="color: #10B981;">0 hrs saved</span>
+            <span style="font-size: 11px; color: var(--text-muted);" id="okf-stat-savings-sub">Shared Explore modeling savings</span>
+          </div>
+        </div>
+
+        <!-- Stage 1.5 Reconciliation Result Banner -->
+        <div id="okf-reconcile-banner" style="display: none; margin-top: 16px; padding: 14px 18px; border-radius: 10px; background: linear-gradient(90deg, #FAF5FF 0%, #EEF2FF 100%); border: 1px solid #D8B4FE;">
+          <!-- Populated dynamically after reconciliation -->
+        </div>
+      </div>
+
+      <!-- Two-Pane OKF Knowledge Base Explorer & Live Dual-Namespace Editor -->
+      <div class="canvas-split" style="grid-template-columns: 340px 1fr;">
+        <!-- Left Pane: OKF Concept Directory Tree -->
+        <div class="sheet-nav-panel" style="max-height: 760px; overflow-y: auto;">
+          <div class="sheet-nav-header">
+            <span style="font-weight: 700; font-size: 13px; color: var(--text-primary);">📂 okf_catalog/ Directory Tree</span>
+            <span class="badge" id="okf-total-files-pill" style="background: #EEF2FF; color: var(--primary); font-size: 11px;">0 files</span>
+          </div>
+          <input type="text" id="okf-tree-search" class="sheet-search-input" placeholder="Filter OKF concepts (e.g. order_details, tables/)..." oninput="filterOKFTree(this.value)">
+          <div id="okf-concept-tree-list" style="display: flex; flex-direction: column; gap: 10px; margin-top: 6px;">
+            <!-- Populated by app.js -->
+          </div>
+        </div>
+
+        <!-- Right Pane: Dual-Namespace Inspector & Protected Markdown Editor -->
+        <div class="card" style="margin: 0;">
+          <div class="card-header" style="flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="okf-doc-path" style="font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--primary);">Select an OKF concept file...</span>
+                <span class="badge" id="okf-doc-type-badge" style="background: #F3E8FF; color: #7E22CE; font-size: 11px;">OKF v0.2</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono);" id="okf-doc-sha">
+                SHA-256 Optimistic Concurrency Lock: —
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-primary" id="btn-save-okf-concept" onclick="saveCurrentOKFConcept()" style="background: #10B981; border-color: #10B981;">💾 Save Curated OKF (.md) to Disk</button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; margin-bottom: 14px;">
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
+                🔒 extracted: Namespace (Owned by Stage 1 Extractor)
+              </div>
+              <pre id="okf-extracted-json-view" style="font-family: var(--font-mono); font-size: 11px; color: var(--text-primary); max-height: 170px; overflow: auto; white-space: pre-wrap; margin: 0;">{}</pre>
+            </div>
+            <div style="background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 8px; padding: 12px;">
+              <div style="font-size: 11px; font-weight: 700; color: #6B21A8; text-transform: uppercase; margin-bottom: 6px;">
+                ✏️ governance: Namespace (Preserved Across Re-Extractions)
+              </div>
+              <textarea id="okf-governance-json-editor" style="width: 100%; height: 150px; font-family: var(--font-mono); font-size: 11px; border: 1px solid #D8B4FE; border-radius: 6px; padding: 8px; background: #FFFFFF; color: var(--text-primary);">{}</textarea>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <label style="display: block; font-size: 11px; font-weight: 700; color: #059669; text-transform: uppercase; margin-bottom: 6px;">
+              📝 Protected Architect & AI Agent Curated Notes (&lt;!-- BEGIN CURATED NOTES --&gt; — Preserved on Re-Extract)
+            </label>
+            <textarea id="okf-curated-notes-editor" rows="4" style="width: 100%; font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; background: var(--bg-card); color: var(--text-primary);" placeholder="Add consolidation notes, field alias mappings, or Category 2 LookML/dbt remediation details..."></textarea>
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
+              📄 Complete On-Disk OKF v0.2 Markdown File (YAML 1.2 Frontmatter + Fenced Code Blocks)
+            </label>
+            <pre class="code-block" id="okf-raw-markdown-preview" style="max-height: 320px; overflow: auto;"># Click any concept in okf_catalog/ on the left to inspect its OKF v0.2 Markdown...</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: Stage 2 Explore-First LookML Studio -->
+    <div class="tab-pane" id="tab-lookml">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Stage 2: Explore-Centric LookML & dbt Generation</div>
+          <button class="btn-success" id="btn-run-stage2">🚀 Generate LookML Suite</button>
+        </div>
+        <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+          <input type="text" id="target-model-input" value="enterprise_analytics" placeholder="Target Model Name" style="flex: 1; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 8px; font-size: 14px;">
+          <input type="text" id="target-explore-input" value="order_details" placeholder="Target Explore Name" style="flex: 1; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-primary); border-radius: 8px; font-size: 14px;">
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;" id="lookml-subtabs">
+          <button class="btn-secondary active" data-file="explore">📁 Explore (.explore.lkml)</button>
+          <button class="btn-secondary" data-file="dashboard">📊 Dashboard (.dashboard.lookml)</button>
+          <button class="btn-secondary" data-file="view">👁 Root Fact View (.view.lkml)</button>
+          <button class="btn-secondary" data-file="dbt">⚡ Upstream dbt Model (.sql)</button>
+        </div>
+
+        <div class="code-container">
+          <button class="btn-copy" id="btn-copy-lookml">📋 Copy Code</button>
+          <pre class="code-block" id="lookml-code-preview">// Click 'Generate LookML Suite' to compile...</pre>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal: Register / Add Qlik Application -->
+  <div id="modal-register-app" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card" style="width: 100%; max-width: 540px; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2); animation: modalFadeIn 0.2s ease-out; background: var(--bg-card);">
+      <div class="card-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 14px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">✨</span>
+          <div>
+            <div class="card-title" style="font-size: 18px;">Register / Add Qlik Application</div>
+            <div class="card-subtitle" style="font-size: 12px; margin-top: 2px;">Directly register any Qlik Cloud SaaS or QSEoW application into your migration catalog.</div>
+          </div>
+        </div>
+        <button type="button" onclick="closeRegisterAppModal()" style="background: none; border: none; font-size: 22px; color: var(--text-muted); cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+
+      <form id="register-app-form" onsubmit="event.preventDefault(); submitRegisterApp();">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Application Name *</label>
+          <input type="text" id="reg-app-name" placeholder="e.g. Sales Analytics Hub" required style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Friendly name as displayed in Qlik Cloud or Qlik Sense Hub.</div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">App ID or Qlik Cloud URL (Optional)</label>
+          <input type="text" id="reg-app-id" placeholder="e.g. 05bdadd9-0358-4a45-a16f-fc30a8aa16ef or paste URL" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Paste the full browser URL from Qlik Cloud or enter the App GUID. Leave empty to auto-generate.</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <div>
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Space / Stream</label>
+            <input type="text" id="reg-app-space" value="Personal" placeholder="Personal" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+          </div>
+          <div>
+            <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Container Type</label>
+            <select id="reg-app-space-type" style="width: 100%; padding: 12px 16px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 14px; background: var(--bg-card); color: var(--text-primary);">
+              <option value="personal">👤 Personal Space (Sandbox)</option>
+              <option value="shared">👥 Shared Space (Co-Development)</option>
+              <option value="managed">🛡️ Managed Space (Production)</option>
+              <option value="stream">📡 Published Stream (QSEoW)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+          <button type="button" class="btn-secondary" onclick="closeRegisterAppModal()">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-submit-register-app" style="background: #10B981; border-color: #10B981; color: white;">🚀 Register & Compile IR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Manage Migration Leads & AI Agents Roster -->
+  <div id="modal-manage-leads" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card" style="width: 100%; max-width: 760px; max-height: 90vh; overflow-y: auto; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2); animation: modalFadeIn 0.2s ease-out; background: var(--bg-card);">
+      <div class="card-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 14px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 26px;">👥</span>
+          <div>
+            <div class="card-title" style="font-size: 18px;">Migration Leads & Engineering Roster</div>
+            <div class="card-subtitle" style="font-size: 12px; margin-top: 2px;">Manage the genuine roster of data architects, analytics engineers, LookML developers, and automated AI agents.</div>
+          </div>
+        </div>
+        <button type="button" onclick="closeManageLeadsModal()" style="background: none; border: none; font-size: 22px; color: var(--text-muted); cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+
+      <!-- Active Roster Table -->
+      <div style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Active Team Roster</div>
+          <span id="roster-total-count" style="font-size: 11px; color: var(--text-muted);">0 members</span>
+        </div>
+        <div style="border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden; background: var(--bg-card);">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="background: var(--bg-subtle); border-bottom: 1px solid var(--border-subtle); text-align: left;">
+                <th style="padding: 10px 14px; font-weight: 600; color: var(--text-secondary);">Lead Name</th>
+                <th style="padding: 10px 14px; font-weight: 600; color: var(--text-secondary);">Role & Specialty</th>
+                <th style="padding: 10px 14px; font-weight: 600; color: var(--text-secondary);">Email</th>
+                <th style="padding: 10px 14px; font-weight: 600; color: var(--text-secondary); text-align: center;">Assigned Apps</th>
+                <th style="padding: 10px 14px; font-weight: 600; color: var(--text-secondary); text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="leads-roster-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Lead Form -->
+      <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">+ Add New Lead or AI Agent to Roster</div>
+        <form id="create-lead-form" onsubmit="event.preventDefault(); submitCreateLead();">
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Full Name *</label>
+              <input type="text" id="new-lead-name" placeholder="e.g. Gavin Looker or Jane Doe" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+            </div>
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Role *</label>
+              <select id="new-lead-role" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+                <option value="Principal Data Architect">🏛️ Principal Data Architect</option>
+                <option value="Lead Analytics Engineer">⚡ Lead Analytics Engineer (dbt & SQL)</option>
+                <option value="LookML Modeling Specialist">🔍 LookML Modeling Specialist</option>
+                <option value="BI Visualization Architect">📊 BI Visualization Architect</option>
+                <option value="QA & Validation Lead">🧪 QA & Validation Lead</option>
+                <option value="Automated Migration Runner">🤖 Automated Migration Runner (AI Agent)</option>
+                <option value="Migration Engineering Lead" selected>👤 Migration Engineering Lead</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 16px;">
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Specialty / Workstream Focus</label>
+              <input type="text" id="new-lead-specialty" placeholder="e.g. LookML Explores, BigQuery dbt, Visuals" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+            </div>
+            <div>
+              <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Email / Corporate Handle</label>
+              <input type="email" id="new-lead-email" placeholder="e.g. lead@company.com" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="submit" class="btn-primary" style="font-size: 12px; padding: 8px 16px; background: var(--primary);">➕ Add to Roster</button>
+          </div>
+        </form>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 16px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+        <button type="button" class="btn-secondary" onclick="closeManageLeadsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Migration Wave Policy Builder & Assignment Wizard -->
+  <div id="modal-policy-wizard" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card" style="width: 100%; max-width: 960px; max-height: 92vh; overflow-y: auto; margin: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); animation: modalFadeIn 0.2s ease-out; background: var(--bg-card); display: flex; flex-direction: column;">
+      
+      <!-- Wizard Header -->
+      <div class="card-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px; margin-bottom: 0;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 28px; background: rgba(79, 70, 229, 0.1); padding: 8px; border-radius: 10px;">⚡</span>
+          <div>
+            <div class="card-title" style="font-size: 19px; display: flex; align-items: center; gap: 8px;">
+              <span>Migration Wave Policy Builder & Assignment Wizard</span>
+              <span class="badge" style="background: #EEF2FF; color: #4F46E5; font-size: 11px;">Automated Governance</span>
+            </div>
+            <div class="card-subtitle" style="font-size: 12px; margin-top: 2px;">Define prioritized business rules, simulate impact across all applications, and auto-assign migration waves and leads.</div>
+          </div>
+        </div>
+        <button type="button" onclick="closePolicyWizardModal()" style="background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+
+      <!-- Step Navigation Bar -->
+      <div style="display: flex; border-bottom: 1px solid var(--border-subtle); background: var(--bg-subtle); padding: 0 20px;">
+        <button type="button" class="wizard-step-btn active" id="btn-step-rules" onclick="switchWizardTab('rules')" style="padding: 12px 18px; border: none; background: none; font-weight: 600; font-size: 13px; color: var(--primary); border-bottom: 2px solid var(--primary); cursor: pointer; display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: white; font-size: 11px;">1</span>
+          <span>Policy Rules & Conditions</span>
+        </button>
+        <button type="button" class="wizard-step-btn" id="btn-step-simulate" onclick="switchWizardTab('simulate')" style="padding: 12px 18px; border: none; background: none; font-weight: 600; font-size: 13px; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--border-subtle); color: var(--text-muted); font-size: 11px;">2</span>
+          <span>Simulate Impact & Dry-Run</span>
+        </button>
+        <button type="button" class="wizard-step-btn" id="btn-step-apply" onclick="switchWizardTab('apply')" style="padding: 12px 18px; border: none; background: none; font-weight: 600; font-size: 13px; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--border-subtle); color: var(--text-muted); font-size: 11px;">3</span>
+          <span>Commit & Apply</span>
+        </button>
+      </div>
+
+      <!-- Wizard Body Content -->
+      <div style="padding: 20px; flex: 1;">
+        
+        <!-- STEP 1: Policy Rules & Editor -->
+        <div id="wizard-pane-rules">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">Policy Rules Priority Hierarchy</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Rules are evaluated top-down in priority order. The first matching rule sets the wave and lead owner.</div>
+            </div>
+            <button type="button" class="btn-primary" onclick="togglePolicyForm(true)" style="font-size: 12px; padding: 7px 14px;">➕ Create New Policy Rule</button>
+          </div>
+
+          <!-- Add / Edit Rule Inline Form (Collapsible) -->
+          <div id="policy-editor-form-panel" style="display: none; background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 18px; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+              <span style="font-weight: 700; font-size: 13px; color: var(--text-primary);" id="policy-form-title">➕ Define Policy Rule</span>
+              <button type="button" onclick="togglePolicyForm(false)" style="background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 16px;">✕</button>
+            </div>
+
+            <form id="policy-rule-form" onsubmit="event.preventDefault(); submitSavePolicyRule();">
+              <input type="hidden" id="form-policy-id" value="">
+              
+              <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Policy Name *</label>
+                  <input type="text" id="form-policy-name" placeholder="e.g. High-Complexity Financial Models" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+                </div>
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Evaluation Priority *</label>
+                  <input type="number" id="form-policy-priority" min="1" max="50" value="1" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+                </div>
+                <div>
+                  <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Condition Match Mode</label>
+                  <select id="form-policy-match-mode" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+                    <option value="ALL">Match ALL Criteria (AND)</option>
+                    <option value="ANY">Match ANY Criteria (OR)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Description / Rationale</label>
+                <input type="text" id="form-policy-desc" placeholder="Explain the business objective of this rule..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+              </div>
+
+              <!-- Conditions Group -->
+              <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Conditions / Trigger Criteria</div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px;">
+                  <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Target Container / Space Types</label>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px;">
+                      <label style="font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" name="policy-space-type" value="managed"> Managed</label>
+                      <label style="font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" name="policy-space-type" value="shared"> Shared</label>
+                      <label style="font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" name="policy-space-type" value="personal"> Personal</label>
+                      <label style="font-size: 12px; display: flex; align-items: center; gap: 4px; cursor: pointer;"><input type="checkbox" name="policy-space-type" value="stream"> Streams</label>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Title Keywords (comma-separated)</label>
+                    <input type="text" id="form-policy-keywords" placeholder="e.g. risk, wealth, dev, sandbox" style="width: 100%; padding: 7px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 12px; background: var(--bg-card); color: var(--text-primary);">
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+                  <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Min Sheets</label>
+                    <input type="number" id="form-policy-min-sheets" min="0" placeholder="Optional" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 12px; background: var(--bg-card); color: var(--text-primary);">
+                  </div>
+                  <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Max Sheets</label>
+                    <input type="number" id="form-policy-max-sheets" min="0" placeholder="Optional" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 12px; background: var(--bg-card); color: var(--text-primary);">
+                  </div>
+                  <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Min Widgets/Tiles</label>
+                    <input type="number" id="form-policy-min-widgets" min="0" placeholder="Optional" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 12px; background: var(--bg-card); color: var(--text-primary);">
+                  </div>
+                  <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Script Finding Category</label>
+                    <select id="form-policy-finding-cat" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 12px; background: var(--bg-card); color: var(--text-primary);">
+                      <option value="">Any / None</option>
+                      <option value="1">Cat 1 (Syntax / Direct Mappings)</option>
+                      <option value="2">Cat 2 (ETL / Resident Load Scripts)</option>
+                      <option value="3">Cat 3 (Complex Associative / Loops)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions Group -->
+              <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="font-size: 11px; font-weight: 700; color: #10B981; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Actions / Target Assignments</div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px;">
+                  <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Target Migration Wave *</label>
+                    <select id="form-policy-wave" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+                      <option value="wave1">Wave 1: Quick Wins (Sprint 1)</option>
+                      <option value="wave2">Wave 2: Core Governed (Sprint 2-3)</option>
+                      <option value="wave3">Wave 3: Complex Multi-Fact (Sprint 4+)</option>
+                      <option value="decommissioned">Decommissioned / Sunsetting</option>
+                      <option value="unassigned">Backlog (Unassigned)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Target Lead Owner *</label>
+                    <select id="form-policy-lead" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--text-primary);">
+                      <!-- Dynamically populated from genuine roster -->
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-secondary" onclick="togglePolicyForm(false)">Cancel</button>
+                <button type="submit" class="btn-primary" style="padding: 8px 18px;">💾 Save Policy Rule</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Rules List Container -->
+          <div id="policy-rules-list-container" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Populated dynamically -->
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 20px; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+            <button type="button" class="btn-primary" onclick="switchWizardTab('simulate')" style="display: flex; align-items: center; gap: 8px;">
+              <span>Next: Dry-Run Simulation</span> <span>→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Simulation & Dry-Run Impact Diff -->
+        <div id="wizard-pane-simulate" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">Simulation Impact & Diff Preview</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Preview the proposed wave and lead changes before applying them to the portfolio.</div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" class="btn-secondary" onclick="runPolicySimulation()" style="font-size: 12px;">🔄 Re-run Simulation</button>
+            </div>
+          </div>
+
+          <!-- Simulation Summary Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
+            <div class="stat-card" style="padding: 12px 14px;">
+              <span class="stat-label">TOTAL EVALUATED</span>
+              <span class="stat-value" id="sim-stat-total" style="font-size: 20px;">0</span>
+            </div>
+            <div class="stat-card" style="padding: 12px 14px;">
+              <span class="stat-label">MATCHED POLICIES</span>
+              <span class="stat-value" id="sim-stat-matched" style="font-size: 20px; color: var(--primary);">0</span>
+            </div>
+            <div class="stat-card" style="padding: 12px 14px;">
+              <span class="stat-label">CHANGES DETECTED</span>
+              <span class="stat-value" id="sim-stat-changed" style="font-size: 20px; color: #F59E0B;">0</span>
+            </div>
+          </div>
+
+          <!-- Simulation Diff Table -->
+          <div style="border: 1px solid var(--border-subtle); border-radius: 8px; overflow: hidden; background: var(--bg-card); max-height: 380px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead style="position: sticky; top: 0; background: var(--bg-subtle); border-bottom: 1px solid var(--border-subtle); z-index: 10;">
+                <tr style="text-align: left;">
+                  <th style="padding: 10px 12px; width: 34px; text-align: center;"><input type="checkbox" id="sim-select-all" checked onchange="toggleSelectAllSimulation(this.checked)"></th>
+                  <th style="padding: 10px 12px; font-weight: 600; color: var(--text-secondary);">Application</th>
+                  <th style="padding: 10px 12px; font-weight: 600; color: var(--text-secondary);">Space / Scope</th>
+                  <th style="padding: 10px 12px; font-weight: 600; color: var(--text-secondary);">Current → Proposed Wave</th>
+                  <th style="padding: 10px 12px; font-weight: 600; color: var(--text-secondary);">Current → Proposed Lead</th>
+                  <th style="padding: 10px 12px; font-weight: 600; color: var(--text-secondary);">Triggered Policy</th>
+                </tr>
+              </thead>
+              <tbody id="sim-diff-tbody">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+            <button type="button" class="btn-secondary" onclick="switchWizardTab('rules')">← Back to Rules</button>
+            <button type="button" class="btn-primary" onclick="switchWizardTab('apply')" style="display: flex; align-items: center; gap: 8px;">
+              <span>Next: Review & Apply</span> <span>→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 3: Commit & Apply Confirmation -->
+        <div id="wizard-pane-apply" style="display: none;">
+          <div style="text-align: center; padding: 24px 16px;">
+            <div style="font-size: 44px; margin-bottom: 12px;">🚀</div>
+            <div style="font-weight: 700; font-size: 18px; color: var(--text-primary); margin-bottom: 6px;">Ready to Commit Policy Assignments</div>
+            <div style="font-size: 13px; color: var(--text-muted); max-width: 520px; margin: 0 auto 20px auto;">
+              You have selected <strong id="apply-selected-count" style="color: var(--primary);">0</strong> application(s) for automated wave and lead updates.
+            </div>
+
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: 10px; max-width: 480px; margin: 0 auto 24px auto; padding: 16px; text-align: left; font-size: 13px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="color: var(--text-secondary);">Target Environment:</span>
+                <strong id="apply-inst-name" style="color: var(--text-primary);">All Active Applications</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="color: var(--text-secondary);">Execution Mode:</span>
+                <span style="color: var(--accent-success); font-weight: 600;">Deterministic Rule Evaluation</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-secondary);">Action:</span>
+                <span style="color: var(--text-primary); font-weight: 600;">Update Wave & Lead Owners in Database</span>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: center; gap: 12px;">
+              <button type="button" class="btn-secondary" onclick="switchWizardTab('simulate')">← Back to Simulation</button>
+              <button type="button" class="btn-primary" onclick="commitPolicyAssignments()" style="padding: 10px 24px; font-weight: 600; background: linear-gradient(135deg, #10B981, #059669); border: none; font-size: 14px; cursor: pointer;">
+                ⚡ Commit & Apply to Portfolio
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Wizard Footer -->
+      <div style="border-top: 1px solid var(--border-subtle); padding: 12px 20px; background: var(--bg-subtle); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted);">
+        <span>Enterprise Qlik-to-Looker Migration Engine v2.7</span>
+        <button type="button" class="btn-secondary" onclick="closePolicyWizardModal()" style="font-size: 12px; padding: 6px 14px;">Close Wizard</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modern Loading State Overlay with Progress Ring -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="loading-card">
+      <div class="progress-ring"></div>
+      <div class="loading-text" id="loading-text">Processing Request...</div>
+      <div class="loading-subtext" id="loading-subtext">Executing engine pipeline...</div>
+    </div>
+  </div>
+
+  <script src="app.js?v=2.10"></script>
+</body>
+</html>
